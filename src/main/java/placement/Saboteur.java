@@ -49,4 +49,8 @@ public class Saboteur {
             targetCell.placeMine(new Mine());
         }
     }
+
+    public void afterSafeTurn(Field field, Cell openedCell) {
+        // Extension point for saboteurs that change the field during the game.
+    }
 }

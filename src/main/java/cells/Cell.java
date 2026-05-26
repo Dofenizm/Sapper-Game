@@ -97,6 +97,25 @@ public class Cell {
         mine.placeIn(this);
     }
 
+    public Mine removeMine() {
+        if (mine == null) {
+            throw new IllegalStateException("Cell does not contain a mine.");
+        }
+
+        Mine removedMine = mine;
+        mine = null;
+        return removedMine;
+    }
+
+    public void close() {
+        state = CellState.CLOSED;
+        flag = null;
+    }
+
+    public boolean canReceiveRelocatedMine() {
+        return mine == null && state != CellState.FLAGGED;
+    }
+
     public boolean hasMine() {
         return mine != null;
     }

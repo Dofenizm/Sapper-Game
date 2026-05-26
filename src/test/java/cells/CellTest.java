@@ -72,4 +72,43 @@ class CellTest {
 
         assertEquals(3, cell.getAdjacentMinesCount());
     }
+
+    // При перемещении мины ячейка должна отдать объект мины и стать безопасной.
+    @Test
+    void removeMineReturnsMineAndClearsCell() {
+        Cell cell = new Cell(0, 0);
+        Mine mine = new Mine();
+        cell.placeMine(mine);
+
+        Mine removedMine = cell.removeMine();
+
+        assertSame(mine, removedMine);
+        assertFalse(cell.hasMine());
+    }
+
+    // Если диверсант кладет мину на открытую область, клетка должна снова стать закрытой.
+    @Test
+    void closeReturnsOpenedCellToClosedState() {
+        Cell cell = new Cell(0, 0);
+        cell.open();
+
+        cell.close();
+
+        assertEquals(CellState.CLOSED, cell.getState());
+    }
+
+    // Мину можно переложить только в ячейку без мины и без флага.
+    @Test
+    void canReceiveRelocatedMineRejectsFlaggedOrMinedCells() {
+        Cell freeCell = new Cell(0, 0);
+        Cell flaggedCell = new Cell(1, 0);
+        Cell minedCell = new Cell(2, 0);
+
+        flaggedCell.setFlag();
+        minedCell.placeMine(new Mine());
+
+        assertTrue(freeCell.canReceiveRelocatedMine());
+        assertFalse(flaggedCell.canReceiveRelocatedMine());
+        assertFalse(minedCell.canReceiveRelocatedMine());
+    }
 }

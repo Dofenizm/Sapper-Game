@@ -7,6 +7,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FieldTest {
@@ -82,6 +83,55 @@ class FieldTest {
         openSafeCell(field, 0, 1);
 
         assertTrue(field.isWinConditionMet());
+    }
+
+    // Перемещение мины должно перенести сам объект Mine, закрыть открытую цель и пересчитать цифры.
+    @Test
+    void moveMineTransfersMineClosesOpenedTargetAndUpdatesNeighborCounts() {
+        Field field = new Field(3, 3, 1);
+        field.initialize();
+        Cell source = field.getCell(2, 2);
+        Cell target = field.getCell(1, 1);
+        Mine mine = new Mine();
+        source.placeMine(mine);
+        field.updateNeighborCounts();
+        target.open();
+        field.registerSafeOpen(target);
+
+        field.moveMine(source, target);
+
+        assertFalse(source.hasMine());
+        assertTrue(target.hasMine());
+        assertFalse(target.isOpened());
+        assertSame(target, mine.getOwnerCell());
+        assertEquals(0, field.getOpenedSafeCellsCount());
+        assertEquals(1, field.getCell(0, 0).getAdjacentMinesCount());
+    }
+
+    // Граница открытой области состоит из открытых клеток, рядом с которыми еще есть закрытые клетки.
+    @Test
+    void openedBoundaryCellsContainOpenedCellsWithClosedNeighbors() {
+        Field field = new Field(3, 3, 1);
+        field.initialize();
+        openSafeCell(field, 1, 1);
+
+        assertTrue(field.getOpenedBoundaryCells().contains(field.getCell(1, 1)));
+    }
+
+    // Поле должно уметь считать все установленные флаги.
+    @Test
+    void flaggedCellsCountReflectsCurrentFlags() {
+        Field field = new Field(3, 3, 2);
+        field.initialize();
+
+        field.getCell(0, 0).setFlag();
+        field.getCell(1, 1).setFlag();
+
+        assertEquals(2, field.getFlaggedCellsCount());
+
+        field.getCell(0, 0).removeFlag();
+
+        assertEquals(1, field.getFlaggedCellsCount());
     }
 
     // Вспомогательный метод открывает безопасную ячейку и сразу регистрирует ее для проверки победы.

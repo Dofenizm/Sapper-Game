@@ -4,6 +4,7 @@ import board.Coordinates;
 import board.Field;
 import actions.CellAction;
 import hazards.Mine;
+import placement.RelocatingSaboteur;
 import placement.Saboteur;
 
 import org.junit.jupiter.api.Test;
@@ -111,6 +112,44 @@ class GameTest {
         assertEquals(0, game.getField().getOpenedSafeCellsCount());
     }
 
+    // Количество установленных флагов не должно превышать количество мин.
+    @Test
+    void flagPlacementIsLimitedByMineCount() {
+        Field field = createManualField(2, 2, new Coordinates(1, 1));
+        Game game = new Game(new StubSaboteur(field));
+        game.startGame(2, 2, 1, 2);
+
+        game.processTurn(new Coordinates(0, 0), CellAction.TOGGLE_FLAG);
+        game.processTurn(new Coordinates(1, 0), CellAction.TOGGLE_FLAG);
+
+        assertTrue(game.getField().getCell(0, 0).isFlagged());
+        assertFalse(game.getField().getCell(1, 0).isFlagged());
+        assertEquals(1, game.getField().getFlaggedCellsCount());
+
+        game.processTurn(new Coordinates(0, 0), CellAction.TOGGLE_FLAG);
+        game.processTurn(new Coordinates(1, 0), CellAction.TOGGLE_FLAG);
+
+        assertFalse(game.getField().getCell(0, 0).isFlagged());
+        assertTrue(game.getField().getCell(1, 0).isFlagged());
+        assertEquals(1, game.getField().getFlaggedCellsCount());
+    }
+
+    // При использовании RelocatingSaboteur игра запускает перенос мины после безопасного открытия.
+    @Test
+    void relocatingSaboteurIsAppliedAfterSafeTurn() {
+        Field field = createManualField(2, 2, new Coordinates(1, 1));
+        Game game = new Game(new StubRelocatingSaboteur(field));
+        game.startGame(2, 2, 1, 2);
+
+        game.processTurn(new Coordinates(0, 0), CellAction.OPEN);
+
+        assertTrue(game.getField().getCell(0, 0).hasMine());
+        assertFalse(game.getField().getCell(0, 0).isOpened());
+        assertFalse(game.getField().getCell(1, 1).hasMine());
+        assertEquals(0, game.getField().getOpenedSafeCellsCount());
+        assertEquals(GameState.IN_PROGRESS, game.getGameState());
+    }
+
     // Подготавливаем поле вручную, чтобы тесты не зависели от случайной расстановки мин.
     private static Field createManualField(int width, int height, Coordinates mineCoordinates) {
         Field field = new Field(width, height, 1);
@@ -131,6 +170,20 @@ class GameTest {
         @Override
         public Field createAndInitializeField(int width, int height, int mineCount) {
             // В тестах игра всегда получает заранее известное поле.
+            return preparedField;
+        }
+    }
+
+    private static final class StubRelocatingSaboteur extends RelocatingSaboteur {
+        private final Field preparedField;
+
+        private StubRelocatingSaboteur(Field preparedField) {
+            super((field, openedCell) -> field.moveMine(field.getCell(1, 1), openedCell));
+            this.preparedField = preparedField;
+        }
+
+        @Override
+        public Field createAndInitializeField(int width, int height, int mineCount) {
             return preparedField;
         }
     }

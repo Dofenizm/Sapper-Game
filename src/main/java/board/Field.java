@@ -2,6 +2,7 @@ package board;
 
 import actions.CellActionResult;
 import cells.Cell;
+import hazards.Mine;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -118,6 +119,48 @@ public class Field {
         }
     }
 
+    public void unregisterSafeOpen(Cell cell) {
+        if (cell == null) {
+            throw new IllegalArgumentException("Cell must not be null.");
+        }
+
+        openedSafeCells.remove(cell);
+    }
+
+    public void moveMine(Cell from, Cell to) {
+        ensureInitialized();
+        if (from == null || to == null) {
+            throw new IllegalArgumentException("Cells must not be null.");
+        }
+
+        if (from == to) {
+            throw new IllegalArgumentException("Mine source and target must be different cells.");
+        }
+
+        if (!from.hasMine()) {
+            throw new IllegalStateException("Source cell does not contain a mine.");
+        }
+
+        if (from.hasDetonatedMine()) {
+            throw new IllegalStateException("Detonated mine cannot be relocated.");
+        }
+
+        if (!to.canReceiveRelocatedMine()) {
+            throw new IllegalStateException("Target cell cannot receive a relocated mine.");
+        }
+
+        boolean targetWasOpened = to.isOpened();
+        Mine mine = from.removeMine();
+        to.placeMine(mine);
+
+        if (targetWasOpened) {
+            unregisterSafeOpen(to);
+            to.close();
+        }
+
+        updateNeighborCounts();
+    }
+
     public void triggerCascadeReveal(Cell startCell) {
         if (startCell == null) {
             throw new IllegalArgumentException("Start cell must not be null.");
@@ -176,8 +219,63 @@ public class Field {
         return openedSafeCells.size();
     }
 
+    public int getFlaggedCellsCount() {
+        ensureInitialized();
+        int flaggedCells = 0;
+
+        for (Cell cell : getAllCells()) {
+            if (cell.isFlagged()) {
+                flaggedCells++;
+            }
+        }
+
+        return flaggedCells;
+    }
+
     public int getSafeCellsCount() {
         return width * height - totalMines;
+    }
+
+    public List<Cell> getOpenedCells() {
+        ensureInitialized();
+        List<Cell> openedCells = new ArrayList<>();
+
+        for (Cell cell : getAllCells()) {
+            if (cell.isOpened()) {
+                openedCells.add(cell);
+            }
+        }
+
+        return openedCells;
+    }
+
+    public List<Cell> getClosedCells() {
+        ensureInitialized();
+        List<Cell> closedCells = new ArrayList<>();
+
+        for (Cell cell : getAllCells()) {
+            if (!cell.isOpened()) {
+                closedCells.add(cell);
+            }
+        }
+
+        return closedCells;
+    }
+
+    public List<Cell> getOpenedBoundaryCells() {
+        ensureInitialized();
+        List<Cell> boundaryCells = new ArrayList<>();
+
+        for (Cell cell : getOpenedCells()) {
+            for (Cell neighbor : cell.getNeighbors()) {
+                if (!neighbor.isOpened()) {
+                    boundaryCells.add(cell);
+                    break;
+                }
+            }
+        }
+
+        return boundaryCells;
     }
 
     public List<Cell> getAllCells() {

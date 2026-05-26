@@ -62,4 +62,18 @@ public class HeaderPanel extends JPanel {
     public void addExitListeners(ActionListener listener) {
         menuPanel.addExitListener(listener);
     }
+
+    /**
+     * Возвращает выбранный режим диверсанта для следующей партии.
+     */
+    public boolean isSabotageModeEnabled() {
+        return menuPanel.isSabotageModeEnabled();
+    }
+
+    /**
+     * Восстанавливает выбранный режим диверсанта после пересоздания панели.
+     */
+    public void setSabotageModeEnabled(boolean enabled) {
+        menuPanel.setSabotageModeEnabled(enabled);
+    }
 }

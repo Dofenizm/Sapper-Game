@@ -1,0 +1,232 @@
+@startuml Saper_Model_Class_Diagram
+title Minesweeper model class diagram
+
+left to right direction
+hide circle
+skinparam classAttributeIconSize 0
+skinparam packageStyle rectangle
+skinparam linetype ortho
+
+package actions {
+    enum "CellAction" as CellAction {
+        OPEN
+        TOGGLE_FLAG
+    }
+
+    class "CellActionResult" as CellActionResult <<record>> {
+        - opened: boolean
+        - mineTriggered: boolean
+        - cascadeReveal: boolean
+        - flagStateChanged: boolean
+        {static} - NO_CHANGE: CellActionResult
+        {static} - FLAG_CHANGED: CellActionResult
+        + opened(): boolean
+        + mineTriggered(): boolean
+        + cascadeReveal(): boolean
+        + flagStateChanged(): boolean
+        {static} + noChange(): CellActionResult
+        {static} + flagChanged(): CellActionResult
+        {static} + opened(mineTriggered: boolean, cascadeReveal: boolean): CellActionResult
+        + stateChanged(): boolean
+    }
+}
+
+package actors {
+    class "Player" as Player {
+        - currentLives: int
+        - maxLives: int
+        + Player(initialLives: int)
+        + resetLives(count: int): void
+        + loseLife(): void
+        + getLives(): int
+        + getMaxLives(): int
+        + isAlive(): boolean
+    }
+}
+
+package board {
+    class "Coordinates" as Coordinates <<record>> {
+        - x: int
+        - y: int
+        + Coordinates(x: int, y: int)
+        + x(): int
+        + y(): int
+    }
+
+    class "Field" as Field {
+        - width: int
+        - height: int
+        - totalMines: int
+        - grid: Cell[][]
+        - openedSafeCells: Set<Cell>
+        + Field(width: int, height: int, totalMines: int)
+        + initialize(): void
+        + getCell(x: int, y: int): Cell
+        + getCell(coordinates: Coordinates): Cell
+        + getNeighbors(cell: Cell): List<Cell>
+        + updateNeighborCounts(): void
+        + registerSafeOpen(cell: Cell): void
+        + unregisterSafeOpen(cell: Cell): void
+        + moveMine(from: Cell, to: Cell): void
+        + triggerCascadeReveal(startCell: Cell): void
+        + isWinConditionMet(): boolean
+        + getWidth(): int
+        + getHeight(): int
+        + getTotalMines(): int
+        + getOpenedSafeCellsCount(): int
+        + getSafeCellsCount(): int
+        + getOpenedCells(): List<Cell>
+        + getClosedCells(): List<Cell>
+        + getOpenedBoundaryCells(): List<Cell>
+        + getAllCells(): List<Cell>
+        - ensureInitialized(): void
+        - validateCoordinates(x: int, y: int): void
+        - isWithinBounds(x: int, y: int): boolean
+    }
+}
+
+package cells {
+    enum "CellState" as CellState {
+        CLOSED
+        OPENED
+        FLAGGED
+    }
+
+    class "Cell" as Cell {
+        - coordinates: Coordinates
+        - neighbors: List<Cell>
+        - state: CellState
+        - mine: Mine
+        - flag: Flag
+        - adjacentMinesCount: int
+        + Cell(x: int, y: int)
+        + Cell(coordinates: Coordinates)
+        + handleAction(action: CellAction): CellActionResult
+        + open(): CellActionResult
+        + setFlag(): boolean
+        + removeFlag(): boolean
+        + placeMine(mine: Mine): void
+        + removeMine(): Mine
+        + close(): void
+        + canReceiveRelocatedMine(): boolean
+        + hasMine(): boolean
+        + hasDetonatedMine(): boolean
+        + isFlagged(): boolean
+        + isOpened(): boolean
+        + getState(): CellState
+        + getCoordinates(): Coordinates
+        + setAdjacentMinesCount(count: int): void
+        + getAdjacentMinesCount(): int
+        + addNeighbor(neighbor: Cell): void
+        + getNeighbors(): List<Cell>
+        - toggleFlag(): CellActionResult
+    }
+}
+
+package game {
+    enum "GameState" as GameState {
+        IN_PROGRESS
+        WON
+        LOST
+    }
+
+    class "Game" as Game {
+        - saboteur: Saboteur
+        - field: Field
+        - player: Player
+        - gameState: GameState
+        - running: boolean
+        + Game()
+        + Game(saboteur: Saboteur)
+        + startGame(width: int, height: int, mineCount: int, initialLives: int): void
+        + processTurn(coordinates: Coordinates, action: CellAction): void
+        + checkGameState(): void
+        + endGame(): void
+        + isRunning(): boolean
+        + getField(): Field
+        + getPlayer(): Player
+        + getGameState(): GameState
+        - ensureGameIsRunning(): void
+        - applySaboteurEffect(openedCell: Cell): void
+    }
+}
+
+package hazards {
+    class "Mine" as Mine {
+        - ownerCell: Cell
+        - detonated: boolean
+        + detonate(): void
+        + placeIn(cell: Cell): void
+        + getOwnerCell(): Cell
+        + isDetonated(): boolean
+    }
+}
+
+package marks {
+    class "Flag" as Flag {
+        - ownerCell: Cell
+        + Flag(ownerCell: Cell)
+        + blockOpening(): boolean
+        + getOwnerCell(): Cell
+    }
+}
+
+package placement {
+    interface "MineRelocationStrategy" as MineRelocationStrategy {
+        + relocateMines(field: Field, openedCell: Cell): void
+    }
+
+    class "Saboteur" as Saboteur {
+        - random: Random
+        + Saboteur()
+        + Saboteur(random: Random)
+        + createAndInitializeField(width: int, height: int, mineCount: int): Field
+        + placeInitialMines(field: Field, mineCount: int): void
+        + afterSafeTurn(field: Field, openedCell: Cell): void
+    }
+
+    class "RelocatingSaboteur" as RelocatingSaboteur {
+        - relocationStrategy: MineRelocationStrategy
+        + RelocatingSaboteur()
+        + RelocatingSaboteur(relocationStrategy: MineRelocationStrategy)
+        + RelocatingSaboteur(random: Random, relocationStrategy: MineRelocationStrategy)
+        + afterSafeTurn(field: Field, openedCell: Cell): void
+        + relocateAfterTurn(field: Field, openedCell: Cell): void
+    }
+
+    class "BoundaryMineRelocationStrategy" as BoundaryMineRelocationStrategy {
+        - random: Random
+        + BoundaryMineRelocationStrategy()
+        + BoundaryMineRelocationStrategy(random: Random)
+        + relocateMines(field: Field, openedCell: Cell): void
+        - findRelocatableMines(field: Field): List<Cell>
+        - findBoundaryTargets(field: Field): List<Cell>
+        - isBoundaryCell(cell: Cell): boolean
+    }
+}
+
+' Structural relations are taken from real fields, inheritance and interface realization.
+Game "1" --> "0..1" Field : field
+Game "1" --> "0..1" Player : player
+Game "1" --> "1" Saboteur : saboteur
+Game "1" --> "0..1" GameState : gameState
+
+Field "1" *-- "1..*" Cell : grid
+
+Cell "1" *-- "1" Coordinates : coordinates
+Cell "0..8" -- "0..8" Cell : neighbors
+Cell "0..1" -- "0..1" Mine : mine / ownerCell
+Cell "1" *-- "0..1" Flag : flag
+Cell "1" --> "1" CellState : state
+
+RelocatingSaboteur --|> Saboteur
+BoundaryMineRelocationStrategy ..|> MineRelocationStrategy
+RelocatingSaboteur "1" --> "1" MineRelocationStrategy : relocationStrategy
+
+legend right
+  Method parameter and return-value dependencies
+  are shown in operation signatures only.
+  They are not drawn as extra dependency arrows.
+endlegend
+
+@enduml

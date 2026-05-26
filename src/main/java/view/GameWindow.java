@@ -4,6 +4,9 @@ import actions.CellAction;
 import board.Coordinates;
 import game.Game;
 import game.GameState;
+import placement.BoundaryMineRelocationStrategy;
+import placement.RelocatingSaboteur;
+import placement.Saboteur;
 
 import javax.swing.JFrame;
 import javax.swing.JOptionPane;
@@ -32,6 +35,7 @@ public class GameWindow extends JFrame {
     private int fieldHeight;
     private int mineCount;
     private int livesCount;
+    private boolean sabotageModeEnabled;
 
     /**
      * Создает окно с настройками игры по умолчанию.
@@ -64,11 +68,12 @@ public class GameWindow extends JFrame {
         mineCount = mines;
         livesCount = lives;
 
-        game = new Game();
+        game = createGame();
         game.startGame(fieldWidth, fieldHeight, mineCount, livesCount);
 
         getContentPane().removeAll();
         headerPanel = new HeaderPanel();
+        headerPanel.setSabotageModeEnabled(sabotageModeEnabled);
         boardPanel = new BoardPanel(fieldWidth, fieldHeight);
         setupEventListeners();
 
@@ -108,7 +113,19 @@ public class GameWindow extends JFrame {
      * Перезапускает игру с текущими размерами поля, количеством мин и жизней.
      */
     private void restartGame() {
+        sabotageModeEnabled = headerPanel.isSabotageModeEnabled();
         initialize(fieldWidth, fieldHeight, mineCount, livesCount);
+    }
+
+    /**
+     * Создает модель игры в обычном режиме или в режиме диверсанта.
+     */
+    private Game createGame() {
+        if (sabotageModeEnabled) {
+            return new Game(new RelocatingSaboteur(new BoundaryMineRelocationStrategy()));
+        }
+
+        return new Game(new Saboteur());
     }
 
     /**

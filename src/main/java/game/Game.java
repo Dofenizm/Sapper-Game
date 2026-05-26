@@ -40,6 +40,12 @@ public class Game {
         ensureGameIsRunning();
 
         Cell cell = field.getCell(coordinates);
+        if (action == CellAction.TOGGLE_FLAG
+                && !cell.isFlagged()
+                && field.getFlaggedCellsCount() >= field.getTotalMines()) {
+            return;
+        }
+
         CellActionResult result = cell.handleAction(action);
 
         // Если ячейка безопасна, игра учитывает ее для победы и при необходимости запускает каскад.
@@ -48,6 +54,7 @@ public class Game {
             if (result.cascadeReveal()) {
                 field.triggerCascadeReveal(cell);
             }
+            applySaboteurEffect(cell);
         }
 
         // Урон игроку наносится только после подтвержденного подрыва мины.
@@ -105,5 +112,9 @@ public class Game {
         if (!running || gameState != GameState.IN_PROGRESS) {
             throw new IllegalStateException("Game is not in progress.");
         }
+    }
+
+    private void applySaboteurEffect(Cell openedCell) {
+        saboteur.afterSafeTurn(field, openedCell);
     }
 }
